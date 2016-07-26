@@ -22,9 +22,6 @@ let label = ActiveLabel()
 label.numberOfLines = 0
 label.text = "This is a post with #hashtags and a @userhandle."
 label.textColor = .blackColor()
-label.handleHashtagTap { hashtag in
-  print("Success. You just tapped the \(hashtag) hashtag")
-}
 ```
 
 ## Batched customization
@@ -36,49 +33,26 @@ When using `customize(block:)`, you can group all the customizations on the labe
 Example:
 
 ```swift
-
         label.customize { label in
             label.text = "This is a post with #multiple #hashtags and a @userhandle."
             label.textColor = UIColor(red: 102.0/255, green: 117.0/255, blue: 127.0/255, alpha: 1)
             label.hashtagColor = UIColor(red: 85.0/255, green: 172.0/255, blue: 238.0/255, alpha: 1)
             label.mentionColor = UIColor(red: 238.0/255, green: 85.0/255, blue: 96.0/255, alpha: 1)
             label.URLColor = UIColor(red: 85.0/255, green: 238.0/255, blue: 151.0/255, alpha: 1)
-            label.handleMentionTap { self.alert("Mention", message: $0) }
-            label.handleHashtagTap { self.alert("Hashtag", message: $0) }
-            label.handleURLTap { self.alert("URL", message: $0.absoluteString) }
         }
-
-
 ```
 
 
 ## API
 
-##### `mentionColor: UIColor = .blueColor()`
-##### `mentionSelectedColor: UIColor?`
-##### `hashtagColor: UIColor = .blueColor()`
-##### `hashtagSelectedColor: UIColor?`
-##### `URLColor: UIColor = .blueColor()`
-##### `URLSelectedColor: UIColor?`
+##### 'detectorTypes: [ActiveType]?'
+
+```swift
+// Limit which types get detected.
+label.detectorTypes = [.URL, .Hashtag]
+```
+
 ##### `lineSpacing: Float?`
-
-##### `handleMentionTap: (String) -> ()`
-
-```swift
-label.handleMentionTap { userHandle in print("\(userHandle) tapped") }
-```
-
-##### `handleHashtagTap: (String) -> ()`
-
-```swift
-label.handleHashtagTap { hashtag in print("\(hashtag) tapped") }
-```
-
-##### `handleURLTap: (NSURL) -> ()`
-
-```swift
-label.handleURLTap { url in UIApplication.sharedApplication().openURL(url) }
-```
 
 ##### `filterHashtag: (String) -> Bool`
 

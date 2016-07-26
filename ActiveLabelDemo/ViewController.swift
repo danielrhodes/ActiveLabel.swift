@@ -9,34 +9,55 @@
 import UIKit
 import ActiveLabel
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, ActiveLabelDelegate {
     
     let label = ActiveLabel()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+      
+        label.delegate = self
         label.customize { label in
-            label.text = "This is a post with #multiple #hashtags and a @userhandle. Links are also supported like this one: http://optonaut.co."
+            label.detectorTypes = [.URL, .Mention, .Hashtag]
+            label.attributedText = NSAttributedString(string: "This is a post with #multiple #hashtags and a @userhandle. Links are also supported like this one: http://optonaut.co.")
             label.numberOfLines = 0
-            label.lineSpacing = 4
-            
-            label.textColor = UIColor(red: 102.0/255, green: 117.0/255, blue: 127.0/255, alpha: 1)
-            label.hashtagColor = UIColor(red: 85.0/255, green: 172.0/255, blue: 238.0/255, alpha: 1)
-            label.mentionColor = UIColor(red: 238.0/255, green: 85.0/255, blue: 96.0/255, alpha: 1)
-            label.URLColor = UIColor(red: 85.0/255, green: 238.0/255, blue: 151.0/255, alpha: 1)
-            label.URLSelectedColor = UIColor(red: 82.0/255, green: 190.0/255, blue: 41.0/255, alpha: 1)
-
-            label.handleMentionTap { self.alert("Mention", message: $0) }
-            label.handleHashtagTap { self.alert("Hashtag", message: $0) }
-            label.handleURLTap { self.alert("URL", message: $0.absoluteString) }
+            label.URLAttributes = [
+              NSForegroundColorAttributeName: UIColor(red: 85.0/255, green: 238.0/255, blue: 151.0/255, alpha: 1),
+              NSUnderlineStyleAttributeName: NSNumber(integer: NSUnderlineStyle.StyleSingle.rawValue)
+            ]
+          
+            label.URLSelectedAttributes = [
+              NSForegroundColorAttributeName: UIColor.redColor(),
+            ]
+          
+            label.hashtagAttributes = [
+              NSForegroundColorAttributeName: UIColor(red: 85.0/255, green: 172.0/255, blue: 238.0/255, alpha: 1),
+              NSUnderlineStyleAttributeName: NSNumber(integer: NSUnderlineStyle.StyleSingle.rawValue)
+            ]
+          
+            label.hashtagSelectedAttributes = [
+              NSForegroundColorAttributeName: UIColor.redColor(),
+            ]
+          
+            label.mentionAttributes = [
+              NSForegroundColorAttributeName: UIColor(red: 238.0/255, green: 85.0/255, blue: 96.0/255, alpha: 1),
+              NSUnderlineStyleAttributeName: NSNumber(integer: NSUnderlineStyle.StyleSingle.rawValue)
+            ]
+          
+            label.mentionSelectedAttributes = [
+              NSForegroundColorAttributeName: UIColor.redColor(),
+            ]
         }
-        
+      
         label.frame = CGRect(x: 20, y: 40, width: view.frame.width - 40, height: 300)
         view.addSubview(label)
         
         
         // Do any additional setup after loading the view, typically from a nib.
+    }
+  
+    func didSelectText(label: ActiveLabel, text: String, ofType type: ActiveType) {
+      self.alert("\(type)", message: text)
     }
 
     override func didReceiveMemoryWarning() {

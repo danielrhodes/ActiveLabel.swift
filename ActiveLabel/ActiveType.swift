@@ -8,7 +8,7 @@
 
 import Foundation
 
-enum ActiveElement {
+internal enum ActiveElement {
     case Mention(String)
     case Hashtag(String)
     case URL(String)
@@ -22,6 +22,10 @@ public enum ActiveType {
     case None
 }
 
+func activelabel_clamp<T: Comparable>(value: T, lower: T, upper: T) -> T {
+  return min(max(value, lower), upper)
+}
+
 typealias ActiveFilterPredicate = (String -> Bool)
 
 struct ActiveBuilder {
@@ -32,15 +36,15 @@ struct ActiveBuilder {
         var elements: [(range: NSRange, element: ActiveElement)] = []
         
         for mention in mentions where mention.range.length > 2 {
-            let range = NSRange(location: mention.range.location + 1, length: mention.range.length - 1)
+            let range = NSRange(location: mention.range.location, length: mention.range.length)
             var word = nsstring.substringWithRange(range)
             if word.hasPrefix("@") {
                 word.removeAtIndex(word.startIndex)
             }
-
+          
             if filterPredicate?(word) ?? true {
                 let element = ActiveElement.Mention(word)
-                elements.append((mention.range, element))
+                elements.append((range, element))
             }
         }
         return elements
@@ -52,15 +56,15 @@ struct ActiveBuilder {
         var elements: [(range: NSRange, element: ActiveElement)] = []
         
         for hashtag in hashtags where hashtag.range.length > 2 {
-            let range = NSRange(location: hashtag.range.location + 1, length: hashtag.range.length - 1)
+            let range = NSRange(location: hashtag.range.location, length: hashtag.range.length)
             var word = nsstring.substringWithRange(range)
             if word.hasPrefix("#") {
                 word.removeAtIndex(word.startIndex)
             }
-
+          
             if filterPredicate?(word) ?? true {
                 let element = ActiveElement.Hashtag(word)
-                elements.append((hashtag.range, element))
+                elements.append((range, element))
             }
         }
         return elements
@@ -72,11 +76,10 @@ struct ActiveBuilder {
         var elements: [(range: NSRange, element: ActiveElement)] = []
         
         for url in urls where url.range.length > 2 {
-            let word = nsstring.substringWithRange(url.range)
-                .stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
-            let element = ActiveElement.URL(word)
+            let element = ActiveElement.URL(nsstring.substringWithRange(url.range))
             elements.append((url.range, element))
         }
+      
         return elements
     }
 }
