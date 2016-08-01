@@ -74,26 +74,9 @@ extension Dictionary {
         hashtagFilterPredicate = predicate
         updateTextStorage()
     }
-
-    // MARK: - override UILabel properties
-    override public var text: String? {
-        didSet { updateTextStorage() }
-    }
     
     override public var attributedText: NSAttributedString? {
         didSet { updateTextStorage() }
-    }
-    
-    override public var font: UIFont! {
-        didSet { updateTextStorage(parseText: false) }
-    }
-    
-    override public var textColor: UIColor! {
-        didSet { updateTextStorage(parseText: false) }
-    }
-    
-    override public var textAlignment: NSTextAlignment {
-        didSet { updateTextStorage(parseText: false)}
     }
 
     public override var numberOfLines: Int {
@@ -189,7 +172,7 @@ extension Dictionary {
         case .Stationary:
             break
         }
-        
+      
         return avoidSuperCall
     }
     
@@ -218,6 +201,7 @@ extension Dictionary {
         textContainer.lineBreakMode = lineBreakMode
         textContainer.maximumNumberOfLines = numberOfLines
         userInteractionEnabled = true
+        addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(ActiveLabel.showMenu(_:))))
     }
     
     private func updateTextStorage(parseText parseText: Bool = true) {
@@ -335,9 +319,7 @@ extension Dictionary {
     }
     
     private func updateAttributesWhenSelected(isSelected: Bool) {
-        guard let selectedElement = selectedElement else {
-            return
-        }
+        guard let selectedElement = selectedElement else { return }
       
         var range = NSRange(location: selectedElement.range.location, length: selectedElement.range.length)
         var attributes = textStorage.attributesAtIndex(0, effectiveRange: &range)
@@ -369,9 +351,7 @@ extension Dictionary {
     }
     
     private func elementAtLocation(location: CGPoint) -> (range: NSRange, element: ActiveElement)? {
-        guard textStorage.length > 0 else {
-            return nil
-        }
+        guard textStorage.length > 0 else { return nil }
 
         var correctLocation = location
         correctLocation.y -= heightCorrection
@@ -421,6 +401,35 @@ extension Dictionary {
     private func didTap(text: String, type: ActiveType) {
       delegate?.didSelectText(self, text: text, ofType: type)
     }
+}
+
+extension ActiveLabel {
+  func showMenu(sender: AnyObject?) {
+    becomeFirstResponder()
+    let menu = UIMenuController.sharedMenuController()
+    if !menu.menuVisible {
+      menu.setTargetRect(bounds, inView: self)
+      menu.setMenuVisible(true, animated: true)
+    }
+  }
+  
+  override public func canPerformAction(action: Selector, withSender sender: AnyObject?) -> Bool {
+    if action == "copy:" {
+      return true
+    }
+    return false
+  }
+  
+  override public func copy(sender: AnyObject?) {
+    let board = UIPasteboard.generalPasteboard()
+    board.string = self.attributedText!.string
+    let menu = UIMenuController.sharedMenuController()
+    menu.setMenuVisible(false, animated: true)
+  }
+  
+  override public func canBecomeFirstResponder() -> Bool {
+    return true
+  }
 }
 
 extension ActiveLabel: UIGestureRecognizerDelegate {
