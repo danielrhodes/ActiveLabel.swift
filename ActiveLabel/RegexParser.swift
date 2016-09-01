@@ -9,28 +9,25 @@
 import Foundation
 
 struct RegexParser {
-    
-    static let urlPattern = "(^|[\\s.:;?\\-\\]<\\(])" +
-    "((https?://|www\\.|pic\\.)[-\\w;/?:@&=+$\\|\\_.!~*\\|'()\\[\\]%#,☺]+[\\w/#](\\(\\))?)" +
-    "(?=$|[\\s',\\|\\(\\).:;?\\-\\[\\]>\\)])"
-    
-    static let hashtagRegex = try? RegularExpression(pattern: "(?:^|\\s|$)#[\\p{L}0-9_]*", options: [.caseInsensitive])
-    static let mentionRegex = try? RegularExpression(pattern: "(?:^|\\s|$|[.])@[\\p{L}0-9_]*", options: [.caseInsensitive]);
-    static let urlDetector = try? RegularExpression(pattern: urlPattern, options: [.caseInsensitive])
-    
+    static let urlPattern = "(?:[^|[\\s.:;?\\-\\]<\\(]])?"
+      + "((https?://|www\\.|pic\\.)[-\\w;/?:@&=+$\\|\\_.!~*\\|'()\\[\\]%#,☺]+[\\w/#](\\(\\))?)"
+
+    static let hashtagRegex = try? NSRegularExpression(pattern: "(?:[^|\\s|$|[^.]])?(#[\\p{L}0-9_]*)", options: [.caseInsensitive])
+    static let mentionRegex = try? NSRegularExpression(pattern: "(?:[^|\\s|$|.])?(@[\\p{L}0-9_]*)", options: [.caseInsensitive]);
+    static let urlDetector = try? NSRegularExpression(pattern: urlPattern, options: [.caseInsensitive])
+
     static func getMentions(fromText text: String, range: NSRange) -> [TextCheckingResult] {
         guard let mentionRegex = mentionRegex else { return [] }
         return mentionRegex.matches(in: text, options: [], range: range)
     }
-    
+
     static func getHashtags(fromText text: String, range: NSRange) -> [TextCheckingResult] {
         guard let hashtagRegex = hashtagRegex else { return [] }
         return hashtagRegex.matches(in: text, options: [], range: range)
     }
-    
+
     static func getURLs(fromText text: String, range: NSRange) -> [TextCheckingResult] {
         guard let urlDetector = urlDetector else { return [] }
         return urlDetector.matches(in: text, options: [], range: range)
     }
-    
 }

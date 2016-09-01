@@ -10,55 +10,67 @@ import Foundation
 import UIKit
 
 public protocol ActiveLabelDelegate: class {
-    func didSelect(_ text: String, type: ActiveType)
+  func didSelectText(_ label: ActiveLabel, text: String, ofType type: ActiveType)
 }
 
-@IBDesignable public class ActiveLabel: UILabel {
-    
+extension Dictionary {
+  fileprivate mutating func activelabel_merge<K, V>(_ dict: [K: V]){
+    for (k, v) in dict {
+      self.updateValue(v as! Value, forKey: k as! Key)
+    }
+  }
+
+  fileprivate mutating func activelabel_removeKeys<K, V>(_ dict: [K: V]) {
+    for (k, _) in dict {
+      self.removeValue(forKey: k as! Key)
+    }
+  }
+}
+
+@IBDesignable open class ActiveLabel: UILabel {
+
     // MARK: - public properties
-    public weak var delegate: ActiveLabelDelegate?
-    
-    @IBInspectable public var mentionColor: UIColor = .blue() {
-        didSet { updateTextStorage(parseText: false) }
+    open weak var delegate: ActiveLabelDelegate?
+
+    open var detectorTypes: [ActiveType]? {
+      didSet {
+        updateTextStorage(parseText: true)
+      }
     }
-    @IBInspectable public var mentionSelectedColor: UIColor? {
-        didSet { updateTextStorage(parseText: false) }
+
+    @IBInspectable open var URLSelectedAttributes: [String: AnyObject] = [:]
+    @IBInspectable open var URLAttributes: [String: AnyObject] = [:] {
+      didSet { updateTextStorage(parseText: false) }
     }
-    @IBInspectable public var hashtagColor: UIColor = .blue() {
-        didSet { updateTextStorage(parseText: false) }
+
+    @IBInspectable open var mentionSelectedAttributes: [String: AnyObject] = [:]
+    @IBInspectable open var mentionAttributes: [String: AnyObject] = [:] {
+      didSet { updateTextStorage(parseText: false) }
     }
-    @IBInspectable public var hashtagSelectedColor: UIColor? {
-        didSet { updateTextStorage(parseText: false) }
+
+    @IBInspectable open var hashtagSelectedAttributes: [String: AnyObject] = [:]
+    @IBInspectable open var hashtagAttributes: [String: AnyObject] = [:] {
+      didSet { updateTextStorage(parseText: false) }
     }
-    @IBInspectable public var URLColor: UIColor = .blue() {
-        didSet { updateTextStorage(parseText: false) }
-    }
-    @IBInspectable public var URLSelectedColor: UIColor? {
-        didSet { updateTextStorage(parseText: false) }
-    }
-    @IBInspectable public var lineSpacing: Float = 0 {
+
+    @IBInspectable open var lineSpacing: Float = 0 {
         didSet { updateTextStorage(parseText: false) }
     }
 
-    // MARK: - public methods
-    public func handleMentionTap(handler: (String) -> ()) {
-        mentionTapHandler = handler
-    }
-    
-    public func handleHashtagTap(handler: (String) -> ()) {
-        hashtagTapHandler = handler
-    }
-    
-    public func handleURLTap(handler: (URL) -> ()) {
-        urlTapHandler = handler
+    fileprivate func shouldHandleType(_ type: ActiveType) -> Bool {
+      if let detectors = detectorTypes {
+        return detectors.contains(type)
+      }
+
+      return true
     }
 
-    public func filterMention(predicate: (String) -> Bool) {
+    open func filterMention(_ predicate: ((String) -> Bool)) {
         mentionFilterPredicate = predicate
         updateTextStorage()
     }
 
-    public func filterHashtag(predicate: (String) -> Bool) {
+    open func filterHashtag(_ predicate: ((String) -> Bool)) {
         hashtagFilterPredicate = predicate
         updateTextStorage()
     }
@@ -67,82 +79,87 @@ public protocol ActiveLabelDelegate: class {
     override public var text: String? {
         didSet { updateTextStorage() }
     }
-    
+
     override public var attributedText: AttributedString? {
         didSet { updateTextStorage() }
     }
-    
+
     override public var font: UIFont! {
         didSet { updateTextStorage(parseText: false) }
     }
-    
+
     override public var textColor: UIColor! {
         didSet { updateTextStorage(parseText: false) }
     }
-    
+
     override public var textAlignment: NSTextAlignment {
         didSet { updateTextStorage(parseText: false)}
     }
 
-    public override var numberOfLines: Int {
+    open override var numberOfLines: Int {
         didSet { textContainer.maximumNumberOfLines = numberOfLines }
     }
-    
-    public override var lineBreakMode: NSLineBreakMode {
+
+    open override var lineBreakMode: NSLineBreakMode {
         didSet { textContainer.lineBreakMode = lineBreakMode }
     }
-    
+
+    open override var canBecomeFirstResponder: Bool {
+      return true
+    }
+
+
     // MARK: - init functions
     override public init(frame: CGRect) {
         super.init(frame: frame)
         _customizing = false
         setupLabel()
     }
-    
+
     required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         _customizing = false
         setupLabel()
     }
 
-    public override func awakeFromNib() {
+    open override func awakeFromNib() {
         super.awakeFromNib()
         updateTextStorage()
     }
-    
-    public override func drawText(in rect: CGRect) {
+
+    open override func drawText(in rect: CGRect) {
         let range = NSRange(location: 0, length: textStorage.length)
-        
+
         textContainer.size = rect.size
         let newOrigin = textOrigin(inRect: rect)
-        
+
         layoutManager.drawBackground(forGlyphRange: range, at: newOrigin)
         layoutManager.drawGlyphs(forGlyphRange: range, at: newOrigin)
     }
-    
-    
+
+
     // MARK: - customzation
-    public func customize(block: (label: ActiveLabel) -> ()) -> ActiveLabel{
+    open func customize(_ block: (_ label: ActiveLabel) -> ()) -> ActiveLabel{
         _customizing = true
-        block(label: self)
+        block(self)
         _customizing = false
         updateTextStorage()
         return self
     }
 
     // MARK: - Auto layout
-    public override func intrinsicContentSize() -> CGSize {
-        let superSize = super.intrinsicContentSize()
-        textContainer.size = CGSize(width: superSize.width, height: CGFloat.greatestFiniteMagnitude)
+    open override var intrinsicContentSize: CGSize {
+        let superSize = super.intrinsicContentSize
+        textContainer.size = CGSize(width: max(superSize.width, self.preferredMaxLayoutWidth), height: CGFloat.greatestFiniteMagnitude)
         let size = layoutManager.usedRect(for: textContainer)
         return CGSize(width: ceil(size.width), height: ceil(size.height))
     }
-    
+
     // MARK: - touch events
     func onTouch(_ touch: UITouch) -> Bool {
         let location = touch.location(in: self)
         var avoidSuperCall = false
-        
+
         switch touch.phase {
         case .began, .moved:
             if let element = element(at: location) {
@@ -158,16 +175,16 @@ public protocol ActiveLabelDelegate: class {
             }
         case .ended:
             guard let selectedElement = selectedElement else { return avoidSuperCall }
-            
+
             switch selectedElement.element {
-            case .mention(let userHandle): didTap(username: userHandle)
-            case .hashtag(let hashtag): didTap(hashtag: hashtag)
-            case .url(let url): didTap(stringURL: url)
-            case .none: ()
+              case .mention(let text) where shouldHandleType(.mention): didTap(text, type: .mention)
+              case .hashtag(let text) where shouldHandleType(.hashtag): didTap(text, type: .hashtag)
+              case .url(let text)     where shouldHandleType(.url):     didTap(text, type: .url)
+              default: break
             }
-            
+
             let when = DispatchTime.now() + Double(Int64(0.25 * Double(NSEC_PER_SEC))) / Double(NSEC_PER_SEC)
-            DispatchQueue.main.after(when: when) {
+            DispatchQueue.main.asyncAfter(deadline: when) {
                 self.updateAttributesWhenSelected(false)
                 self.selectedElement = nil
             }
@@ -178,168 +195,174 @@ public protocol ActiveLabelDelegate: class {
         case .stationary:
             break
         }
-        
+
         return avoidSuperCall
     }
-    
+
     // MARK: - private properties
-    private var _customizing: Bool = true
-    
-    private var mentionTapHandler: ((String) -> ())?
-    private var hashtagTapHandler: ((String) -> ())?
-    private var urlTapHandler: ((URL) -> ())?
+    fileprivate var _customizing: Bool = true
+    fileprivate var mentionFilterPredicate: ((String) -> Bool)?
+    fileprivate var hashtagFilterPredicate: ((String) -> Bool)?
 
-    private var mentionFilterPredicate: ((String) -> Bool)?
-    private var hashtagFilterPredicate: ((String) -> Bool)?
-
-    private var selectedElement: (range: NSRange, element: ActiveElement)?
-    private var heightCorrection: CGFloat = 0
-    private lazy var textStorage = NSTextStorage()
-    private lazy var layoutManager = NSLayoutManager()
-    private lazy var textContainer = NSTextContainer()
+    fileprivate var selectedElement: (range: NSRange, element: ActiveElement)?
+    fileprivate var heightCorrection: CGFloat = 0
+    fileprivate lazy var textStorage = NSTextStorage()
+    fileprivate lazy var layoutManager = NSLayoutManager()
+    fileprivate lazy var textContainer = NSTextContainer()
     internal lazy var activeElements: [ActiveType: [(range: NSRange, element: ActiveElement)]] = [
         .mention: [],
         .hashtag: [],
         .url: [],
     ]
-    
+
     // MARK: - helper functions
-    private func setupLabel() {
+    fileprivate func setupLabel() {
         textStorage.addLayoutManager(layoutManager)
         layoutManager.addTextContainer(textContainer)
         textContainer.lineFragmentPadding = 0
         textContainer.lineBreakMode = lineBreakMode
         textContainer.maximumNumberOfLines = numberOfLines
         isUserInteractionEnabled = true
+        addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(ActiveLabel.showMenu(_:))))
     }
-    
-    private func updateTextStorage(parseText: Bool = true) {
+
+    fileprivate func updateTextStorage(parseText: Bool = true) {
         if _customizing { return }
         // clean up previous active elements
-        guard let attributedText = attributedText where attributedText.length > 0 else {
+        guard let attributedText = attributedText , attributedText.length > 0 else {
             clearActiveElements()
             textStorage.setAttributedString(AttributedString())
             setNeedsDisplay()
             return
         }
-        
+
         let mutAttrString = addLineBreak(to: attributedText)
 
         if parseText {
             clearActiveElements()
             parseTextAndExtractActiveElements(from: mutAttrString)
         }
-        
+
         self.addLinkAttribute(to: mutAttrString)
         self.textStorage.setAttributedString(mutAttrString)
         self.setNeedsDisplay()
     }
 
-    private func clearActiveElements() {
+    fileprivate func clearActiveElements() {
         selectedElement = nil
         for (type, _) in activeElements {
             activeElements[type]?.removeAll()
         }
     }
 
-    private func textOrigin(inRect rect: CGRect) -> CGPoint {
+    fileprivate func textOrigin(inRect rect: CGRect) -> CGPoint {
         let usedRect = layoutManager.usedRect(for: textContainer)
         heightCorrection = (rect.height - usedRect.height)/2
         let glyphOriginY = heightCorrection > 0 ? rect.origin.y + heightCorrection : rect.origin.y
         return CGPoint(x: rect.origin.x, y: glyphOriginY)
     }
-    
+
     /// add link attribute
-    private func addLinkAttribute(to mutAttrString: NSMutableAttributedString) {
+    fileprivate func addLinkAttribute(_ mutAttrString: NSMutableAttributedString) {
         var range = NSRange(location: 0, length: 0)
-        var attributes = mutAttrString.attributes(at: 0, effectiveRange: &range)
-        
-        attributes[NSFontAttributeName] = font!
-        attributes[NSForegroundColorAttributeName] = textColor
-        mutAttrString.addAttributes(attributes, range: range)
-        
-        attributes[NSForegroundColorAttributeName] = mentionColor
-        
+        let attributes = mutAttrString.attributes(at: 0, effectiveRange: &range)
+
         for (type, elements) in activeElements {
-            
+
             switch type {
-            case .mention: attributes[NSForegroundColorAttributeName] = mentionColor
-            case .hashtag: attributes[NSForegroundColorAttributeName] = hashtagColor
-            case .url: attributes[NSForegroundColorAttributeName] = URLColor
-            case .none: ()
+              case .mention where shouldHandleType(.mention): typeAttributes.activelabel_merge(mentionAttributes)
+              case .hashtag where shouldHandleType(.hashtag): typeAttributes.activelabel_merge(hashtagAttributes)
+              case .url     where shouldHandleType(.url):     typeAttributes.activelabel_merge(URLAttributes)
+              default: break
             }
-            
+
             for element in elements {
                 mutAttrString.setAttributes(attributes, range: element.range)
             }
         }
     }
-    
+
     /// use regex check all link ranges
-    private func parseTextAndExtractActiveElements(from attrString: AttributedString) {
+    fileprivate func parseTextAndExtractActiveElements(from attrString: NSAttributedString) {
         let textString = attrString.string
         let textLength = textString.utf16.count
         let textRange = NSRange(location: 0, length: textLength)
-        
-        //URLS
-        let urlElements = ActiveBuilder.createURLElements(fromText: textString, range: textRange)
-        activeElements[.url]?.append(contentsOf: urlElements)
+
+        if shouldHandleType(.url) {
+          let urlElements = ActiveBuilder.createURLElements(fromText: textString, range: textRange)
+          activeElements[.url]?.append(contentsOf: urlElements)
+          // Handle NSLinkAttributeName
+          attrString.enumerateAttribute(NSLinkAttributeName, in: textRange, options: []) { (url, range, stop) in
+            if let url: NSURL = url as? NSURL, let string = url.absoluteString {
+              self.activeElements[.url]?.append((range: range, ActiveElement.url(string)))
+            }
+          }
+        }
 
         //HASHTAGS
-        let hashtagElements = ActiveBuilder.createHashtagElements(fromText: textString, range: textRange, filterPredicate: hashtagFilterPredicate)
-        activeElements[.hashtag]?.append(contentsOf: hashtagElements)
+        if shouldHandleType(.hashtag) {
+          let hashtagElements = ActiveBuilder.createHashtagElements(fromText: textString, range: textRange, filterPredicate: hashtagFilterPredicate)
+          activeElements[.hashtag]?.append(contentsOf: hashtagElements)
+        }
 
         //MENTIONS
-        let mentionElements = ActiveBuilder.createMentionElements(fromText: textString, range: textRange, filterPredicate: mentionFilterPredicate)
-        activeElements[.mention]?.append(contentsOf: mentionElements)
+        if shouldHandleType(.mention) {
+          let mentionElements = ActiveBuilder.createMentionElements(fromText: textString, range: textRange, filterPredicate: mentionFilterPredicate)
+          activeElements[.mention]?.append(contentsOf: mentionElements)
+        }
     }
 
-    
+
     /// add line break mode
-    private func addLineBreak(to attrString: AttributedString) -> NSMutableAttributedString {
+    fileprivate func addLineBreak(to attrString: AttributedString) -> NSMutableAttributedString {
         let mutAttrString = NSMutableAttributedString(attributedString: attrString)
-        
+
         var range = NSRange(location: 0, length: 0)
         var attributes = mutAttrString.attributes(at: 0, effectiveRange: &range)
-        
+
         let paragraphStyle = attributes[NSParagraphStyleAttributeName] as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
         paragraphStyle.lineBreakMode = NSLineBreakMode.byWordWrapping
         paragraphStyle.alignment = textAlignment
         paragraphStyle.lineSpacing = CGFloat(lineSpacing)
-        
+
         attributes[NSParagraphStyleAttributeName] = paragraphStyle
         mutAttrString.setAttributes(attributes, range: range)
-        
+
         return mutAttrString
     }
-    
-    private func updateAttributesWhenSelected(_ isSelected: Bool) {
-        guard let selectedElement = selectedElement else {
-            return
-        }
-        
-        var attributes = textStorage.attributes(at: 0, effectiveRange: nil)
+
+    fileprivate func updateAttributesWhenSelected(_ isSelected: Bool) {
+        guard let selectedElement = selectedElement else { return }
+
+        var range = NSRange(location: selectedElement.range.location, length: selectedElement.range.length)
+        var attributes = textStorage.attributes(at: 0, effectiveRange: &range)
         if isSelected {
             switch selectedElement.element {
-            case .mention(_): attributes[NSForegroundColorAttributeName] = mentionSelectedColor ?? mentionColor
-            case .hashtag(_): attributes[NSForegroundColorAttributeName] = hashtagSelectedColor ?? hashtagColor
-            case .url(_): attributes[NSForegroundColorAttributeName] = URLSelectedColor ?? URLColor
-            case .none: ()
+            case .mention(_) where shouldHandleType(.mention): attributes.activelabel_merge(mentionSelectedAttributes)
+            case .hashtag(_) where shouldHandleType(.hashtag): attributes.activelabel_merge(hashtagSelectedAttributes)
+            case .url(_)  where shouldHandleType(.url): attributes.activelabel_merge(URLSelectedAttributes)
+            default: break
             }
         } else {
             switch selectedElement.element {
-            case .mention(_): attributes[NSForegroundColorAttributeName] = mentionColor
-            case .hashtag(_): attributes[NSForegroundColorAttributeName] = hashtagColor
-            case .url(_): attributes[NSForegroundColorAttributeName] = URLColor
-            case .none: ()
+            case .mention(_) where shouldHandleType(.mention):
+              attributes.activelabel_removeKeys(mentionSelectedAttributes)
+              attributes.activelabel_merge(mentionAttributes)
+            case .hashtag(_) where shouldHandleType(.hashtag):
+              attributes.activelabel_removeKeys(hashtagSelectedAttributes)
+              attributes.activelabel_merge(hashtagAttributes)
+            case .url(_)     where shouldHandleType(.url):
+              attributes.activelabel_removeKeys(URLSelectedAttributes)
+              attributes.activelabel_merge(URLAttributes)
+            default: break
             }
         }
-        
+
         textStorage.addAttributes(attributes, range: selectedElement.range)
-        
+
         setNeedsDisplay()
     }
-    
+
     private func element(at location: CGPoint) -> (range: NSRange, element: ActiveElement)? {
         guard textStorage.length > 0 else {
             return nil
@@ -348,22 +371,22 @@ public protocol ActiveLabelDelegate: class {
         var correctLocation = location
         correctLocation.y -= heightCorrection
         let boundingRect = layoutManager.boundingRect(forGlyphRange: NSRange(location: 0, length: textStorage.length), in: textContainer)
+
         guard boundingRect.contains(correctLocation) else {
             return nil
         }
-        
+
         let index = layoutManager.glyphIndex(for: correctLocation, in: textContainer)
-        
         for element in activeElements.map({ $0.1 }).flatten() {
             if index >= element.range.location && index <= element.range.location + element.range.length {
                 return element
             }
         }
-        
+
         return nil
     }
-    
-    
+
+
     //MARK: - Handle UI Responder touches
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
@@ -371,60 +394,66 @@ public protocol ActiveLabelDelegate: class {
         super.touchesBegan(touches, with: event)
     }
 
-    public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+    open override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         if onTouch(touch) { return }
         super.touchesMoved(touches, with: event)
     }
-    
-    public override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+
+    open override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
-        if onTouch(touch) { return }
+        onTouch(touch)
         super.touchesCancelled(touches, with: event)
     }
-    
-    public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+
+    open override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         if onTouch(touch) { return }
         super.touchesEnded(touches, with: event)
     }
-    
+
     //MARK: - ActiveLabel handler
-    private func didTap(username: String) {
-        guard let mentionHandler = mentionTapHandler else {
-            delegate?.didSelect(username, type: .mention)
-            return
-        }
-        mentionHandler(username)
-    }
-    
-    private func didTap(hashtag: String) {
-        guard let hashtagHandler = hashtagTapHandler else {
-            delegate?.didSelect(hashtag, type: .hashtag)
-            return
-        }
-        hashtagHandler(hashtag)
-    }
-    
-    private func didTap(stringURL: String) {
-        guard let urlHandler = urlTapHandler, let url = URL(string: stringURL) else {
-            delegate?.didSelect(stringURL, type: .url)
-            return
-        }
-        urlHandler(url)
+    fileprivate func didTap(_ text: String, type: ActiveType) {
+      delegate?.didSelectText(self, text: text, ofType: type)
     }
 }
 
+extension ActiveLabel {
+  func showMenu(_ sender: AnyObject?) {
+    becomeFirstResponder()
+    let menu = UIMenuController.shared
+    if !menu.isMenuVisible {
+      menu.setTargetRect(bounds, in: self)
+      menu.setMenuVisible(true, animated: true)
+    }
+  }
+
+  override open func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+    if action == #selector(UIResponderStandardEditActions.copy(_:)) {
+      return true
+    }
+    return false
+  }
+
+
+//  open func copy(_ sender: AnyObject?) {
+//    let board = UIPasteboard.general
+//    board.string = self.attributedText!.string
+//    let menu = UIMenuController.shared
+//    menu.setMenuVisible(false, animated: true)
+//  }
+}
+
 extension ActiveLabel: UIGestureRecognizerDelegate {
-    
+
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         return true
     }
-    
+
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         return true
     }
-    
+
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         return true
     }
