@@ -5,7 +5,7 @@ Pod::Spec.new do |s|
 	s.author      = { 'Optonaut' => 'hello@optonaut.co' }
 	s.homepage    = 'https://github.com/optonaut/ActiveLabel.swift'
 	s.license     = { :type => 'MIT', :file => 'LICENSE' }
-	s.platform    = :ios, '10.0'
+	s.platform    = :ios, '9.0'
 	s.source      = { :git => 'https://github.com/optonaut/ActiveLabel.swift.git', :tag => s.version.to_s }
 	s.summary     = 'UILabel drop-in replacement supporting Hashtags (#), Mentions (@) and URLs (http://) written in Swift'
 	s.description = <<-DESC
@@ -19,5 +19,8 @@ Pod::Spec.new do |s|
 			* Well tested and documented
 	DESC
 
+  s.pod_target_xcconfig = { 'SWIFT_VERSION' => '3.0' }
 	s.source_files = 'ActiveLabel/*.swift'
+  s.ios.deployment_target = '9.0'
+  s.requires_arc = true
 end

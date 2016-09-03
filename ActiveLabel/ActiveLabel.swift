@@ -27,34 +27,34 @@ extension Dictionary {
   }
 }
 
-@IBDesignable open class ActiveLabel: UILabel {
+open class ActiveLabel: UILabel {
 
     // MARK: - public properties
     open weak var delegate: ActiveLabelDelegate?
 
     open var detectorTypes: [ActiveType]? {
       didSet {
-        updateTextStorage(parseText: true)
+        updateTextStorage(true)
       }
     }
 
-    @IBInspectable open var URLSelectedAttributes: [String: AnyObject] = [:]
-    @IBInspectable open var URLAttributes: [String: AnyObject] = [:] {
-      didSet { updateTextStorage(parseText: false) }
+    open var URLSelectedAttributes: [String: AnyObject] = [:]
+    open var URLAttributes: [String: AnyObject] = [:] {
+      didSet { updateTextStorage(false) }
     }
 
-    @IBInspectable open var mentionSelectedAttributes: [String: AnyObject] = [:]
-    @IBInspectable open var mentionAttributes: [String: AnyObject] = [:] {
-      didSet { updateTextStorage(parseText: false) }
+    open var mentionSelectedAttributes: [String: AnyObject] = [:]
+    open var mentionAttributes: [String: AnyObject] = [:] {
+      didSet { updateTextStorage(false) }
     }
 
-    @IBInspectable open var hashtagSelectedAttributes: [String: AnyObject] = [:]
-    @IBInspectable open var hashtagAttributes: [String: AnyObject] = [:] {
-      didSet { updateTextStorage(parseText: false) }
+    open var hashtagSelectedAttributes: [String: AnyObject] = [:]
+    open var hashtagAttributes: [String: AnyObject] = [:] {
+      didSet { updateTextStorage(false) }
     }
 
-    @IBInspectable open var lineSpacing: Float = 0 {
-        didSet { updateTextStorage(parseText: false) }
+    open var lineSpacing: Float = 0 {
+        didSet { updateTextStorage(false) }
     }
 
     fileprivate func shouldHandleType(_ type: ActiveType) -> Bool {
@@ -76,35 +76,35 @@ extension Dictionary {
     }
 
     // MARK: - override UILabel properties
-    override public var text: String? {
+    override open var text: String? {
         didSet { updateTextStorage() }
     }
 
-    override public var attributedText: AttributedString? {
+    override open var attributedText: NSAttributedString? {
         didSet { updateTextStorage() }
     }
 
-    override public var font: UIFont! {
-        didSet { updateTextStorage(parseText: false) }
+    override open var font: UIFont! {
+        didSet { updateTextStorage(false) }
     }
 
-    override public var textColor: UIColor! {
-        didSet { updateTextStorage(parseText: false) }
+    override open var textColor: UIColor! {
+        didSet { updateTextStorage(false) }
     }
 
-    override public var textAlignment: NSTextAlignment {
-        didSet { updateTextStorage(parseText: false)}
+    override open var textAlignment: NSTextAlignment {
+        didSet { updateTextStorage(false)}
     }
 
-    open override var numberOfLines: Int {
+    override open var numberOfLines: Int {
         didSet { textContainer.maximumNumberOfLines = numberOfLines }
     }
 
-    open override var lineBreakMode: NSLineBreakMode {
+    override open var lineBreakMode: NSLineBreakMode {
         didSet { textContainer.lineBreakMode = lineBreakMode }
     }
 
-    open override var canBecomeFirstResponder: Bool {
+    override open var canBecomeFirstResponder: Bool {
       return true
     }
 
@@ -226,12 +226,12 @@ extension Dictionary {
         addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(ActiveLabel.showMenu(_:))))
     }
 
-    fileprivate func updateTextStorage(parseText: Bool = true) {
+    fileprivate func updateTextStorage(_ parseText: Bool = true) {
         if _customizing { return }
         // clean up previous active elements
         guard let attributedText = attributedText , attributedText.length > 0 else {
             clearActiveElements()
-            textStorage.setAttributedString(AttributedString())
+            textStorage.setAttributedString(NSAttributedString())
             setNeedsDisplay()
             return
         }
@@ -243,7 +243,7 @@ extension Dictionary {
             parseTextAndExtractActiveElements(from: mutAttrString)
         }
 
-        self.addLinkAttribute(to: mutAttrString)
+        self.addLinkAttribute(mutAttrString)
         self.textStorage.setAttributedString(mutAttrString)
         self.setNeedsDisplay()
     }
@@ -268,8 +268,10 @@ extension Dictionary {
         let attributes = mutAttrString.attributes(at: 0, effectiveRange: &range)
 
         for (type, elements) in activeElements {
+            var typeAttributes: [String: AnyObject] = [:]
+            typeAttributes.activelabel_merge(attributes)
 
-            switch type {
+          switch type {
               case .mention where shouldHandleType(.mention): typeAttributes.activelabel_merge(mentionAttributes)
               case .hashtag where shouldHandleType(.hashtag): typeAttributes.activelabel_merge(hashtagAttributes)
               case .url     where shouldHandleType(.url):     typeAttributes.activelabel_merge(URLAttributes)
@@ -314,7 +316,7 @@ extension Dictionary {
 
 
     /// add line break mode
-    fileprivate func addLineBreak(to attrString: AttributedString) -> NSMutableAttributedString {
+    fileprivate func addLineBreak(to attrString: NSAttributedString) -> NSMutableAttributedString {
         let mutAttrString = NSMutableAttributedString(attributedString: attrString)
 
         var range = NSRange(location: 0, length: 0)
@@ -363,7 +365,7 @@ extension Dictionary {
         setNeedsDisplay()
     }
 
-    private func element(at location: CGPoint) -> (range: NSRange, element: ActiveElement)? {
+    fileprivate func element(at location: CGPoint) -> (range: NSRange, element: ActiveElement)? {
         guard textStorage.length > 0 else {
             return nil
         }
@@ -377,7 +379,7 @@ extension Dictionary {
         }
 
         let index = layoutManager.glyphIndex(for: correctLocation, in: textContainer)
-        for element in activeElements.map({ $0.1 }).flatten() {
+        for element in activeElements.map({ $0.1 }).joined() {
             if index >= element.range.location && index <= element.range.location + element.range.length {
                 return element
             }
@@ -388,7 +390,7 @@ extension Dictionary {
 
 
     //MARK: - Handle UI Responder touches
-    public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+    open override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         if onTouch(touch) { return }
         super.touchesBegan(touches, with: event)
@@ -446,15 +448,15 @@ extension ActiveLabel {
 
 extension ActiveLabel: UIGestureRecognizerDelegate {
 
-    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+    open func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         return true
     }
 
-    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+    open func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         return true
     }
 
-    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+    open func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         return true
     }
 }
